@@ -14,12 +14,13 @@ from cv_bridge import CvBridge  # Package to convert between ROS and OpenCV Imag
 import cv2  # OpenCV library
 from PIL import Image as Img
 from PIL import ImageTk
-CLASESS_YOLO = ["poison",
-                        "oxygen", "flammable", "flammable-solid", "corrosive", "dangerous", "non-flammable-gas",
-                        "organic-peroxide", "explosive", "radioactive", "inhalation-hazard",
-                        "spontaneously-combustible", "infectious-substance"
-                        ]
-CLASSES = CLASESS_YOLO
+# CLASESS_YOLO = ["poison",
+#                         "oxygen", "flammable", "flammable-solid", "corrosive", "dangerous", "non-flammable-gas",
+#                         "organic-peroxide", "explosive", "radioactive", "inhalation-hazard",
+#                         "spontaneously-combustible", "infectious-substance"
+#                         ]
+CLASSES = ['Alarm_Activator', 'Fire_Blanket', 'Fire_Exit', 'Fire_Extinguisher', 'Fire_Suppression_Signage', 'corrosive', 'dangerous', 'explosive', 'flammable', 'flammable-solid', 'infectious-substance', 'inhalation-hazard', 'non-flammable-gas', 'organic-peroxide', 'oxygen', 'poison', 'radioactive', 'spontaneously-combustible']
+
 colors = np.random.uniform(0, 255, size=(len(CLASSES), 3))
 
 class ImagePublisher(Node):
@@ -38,13 +39,13 @@ class ImagePublisher(Node):
         # to the video_frames topic. The queue size is 10 messages.
         self.publisher_ = self.create_publisher(Image, 'video_frames', 10)
 
-        self.net_ = cv2.dnn.readNet('/home/fhcampus01/Documents/ros2_opencv/best.onnx')
+        self.net_ = cv2.dnn.readNet('/home/fhcampus01/Documents/GitHub/HazardAndFireSafetyDetection_Ros2/src/opencv_tools/opencv_tools/best.onnx')
         #self.net_.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
 
 
 
         # We will publish a message every 0.1 seconds
-        timer_period = 0.1  # seconds
+        timer_period = 0.05  # seconds
 
         # Create the timer
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -105,7 +106,7 @@ class ImagePublisher(Node):
         for i in range(rows):
             classes_scores = outputs[0][i][4:]
             (minScore, maxScore, minClassLoc, (x, maxClassIndex)) = cv2.minMaxLoc(classes_scores)
-            if maxScore >= 0.25:
+            if maxScore >= 0.62:
                 box = [
                     outputs[0][i][0] - (0.5 * outputs[0][i][2]), outputs[0][i][1] - (0.5 * outputs[0][i][3]),
                     outputs[0][i][2], outputs[0][i][3]]
