@@ -52,3 +52,4 @@ CATKIN_IGNORE
 /install/
 /log/
 /src/opencv_tools/.idea/
+/src/opencv_tools/.idea/

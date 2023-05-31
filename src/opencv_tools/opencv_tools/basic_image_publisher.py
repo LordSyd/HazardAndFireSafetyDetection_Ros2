@@ -1,8 +1,15 @@
 # Basic ROS 2 program to publish real-time streaming
-# video from your built-in webcam
-# Author:
+# video from your built-in webcam combined with YOLOv8 object detection
+# Author: Daniel Kleissl
+# Adopted from Code by:
 # - Addison Sears-Collins
 # - https://automaticaddison.com
+#
+# - Ultralytics YOLOv8 Docs
+# - https://docs.ultralytics.com/modes/predict/#streaming-source-for-loop
+
+import time
+
 import numpy as np
 # Import the necessary libraries
 import rclpy  # Python Client Library for ROS 2
@@ -10,8 +17,14 @@ from rclpy.node import Node  # Handles the creation of nodes
 from sensor_msgs.msg import Image  # Image is the message type
 from cv_bridge import CvBridge  # Package to convert between ROS and OpenCV Images
 import cv2  # OpenCV library
-from PIL import Image as Img
-from PIL import ImageTk
+
+# Define yolov8 classes
+CLASSES = ['Alarm_Activator', 'Fire_Blanket', 'Fire_Exit', 'Fire_Extinguisher', 'Fire_Suppression_Signage', 'corrosive',
+           'dangerous', 'explosive', 'flammable', 'flammable-solid', 'infectious-substance', 'inhalation-hazard',
+           'non-flammable-gas', 'organic-peroxide', 'oxygen', 'poison', 'radioactive', 'spontaneously-combustible']
+
+# Get a color for the bounding box
+colors = np.random.uniform(0, 255, size=(len(CLASSES), 3))
 
 class ImagePublisher(Node):
     """
@@ -26,16 +39,18 @@ class ImagePublisher(Node):
         super().__init__('image_publisher')
 
         # Create the publisher. This publisher will publish an Image
-        # to the video_frames topic. The queue size is 10 messages.
-        self.publisher_ = self.create_publisher(Image, 'video_frames', 10)
+        # to the video_frames and video_frames_annotated topic. The queue size is 10 messages.
+        # This is done to allow viewing the original webcam stream if inference is slow
+        self.publisher_ = self.create_publisher(Image, 'video_frames_annotated', 10)
+        self.publisher_original_ = self.create_publisher(Image, 'video_frames', 10)
 
-        self.net_ = cv2.dnn.readNetFromONNX('/home/fhcampus01/Documents/ros2_opencv/best.onnx')
+        # load trained model into OpenCV for inference
+        self.net_ = cv2.dnn.readNet(
+            '/home/fhcampus01/Documents/GitHub/HazardAndFireSafetyDetection_Ros2/src/opencv_tools/opencv_tools/models/yoloV8nCustom.onnx')
         #self.net_.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
 
-
-
-        # We will publish a message every 0.1 seconds
-        timer_period = 0.1  # seconds
+        # We will try to publish a message every 0.05 seconds
+        timer_period = 0.05  # seconds
 
         # Create the timer
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -52,86 +67,81 @@ class ImagePublisher(Node):
         Callback function.
         This function gets called every 0.1 seconds.
         """
-        INPUT_WIDTH = 640
-        INPUT_HEIGHT = 640
-        SCORE_THRESHOLD = 0.2
-        NMS_THRESHOLD = 0.4
-        CONFIDENCE_THRESHOLD = 0.4
 
-        # Define yolov8 classes
-        CLASESS_YOLO = ["poison",
-                        "oxygen", "flammable", "flammable-solid", "corrosive", "dangerous", "non-flammable-gas",
-                        "organic-peroxide", "explosive", "radioactive", "inhalation-hazard",
-                        "spontaneously-combustible", "infectious-substance"
-                        ]
         # Capture frame-by-frame
         # This method returns True/False as well
         # as the video frame.
         ret, frame = self.cap.read()
 
-        blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (INPUT_WIDTH, INPUT_HEIGHT), swapRB=True, crop=False)
-        self.net_.setInput(blob)
-        preds = self.net_.forward()
-        preds = preds.transpose((0, 2, 1))
 
-        # Extract output detection
-        class_ids, confs, boxes = list(), list(), list()
-
-        image_height, image_width, _ = frame.shape
-        x_factor = image_width / INPUT_WIDTH
-        y_factor = image_height / INPUT_HEIGHT
-
-        rows = preds[0].shape[0]
-
-        for i in range(rows):
-            row = preds[0][i]
-            conf = row[4]
-
-            classes_score = row[4:]
-            _, _, _, max_idx = cv2.minMaxLoc(classes_score)
-            class_id = max_idx[1]
-            print(classes_score[8])
-            if (classes_score[class_id] > .25):
-                confs.append(conf)
-                label = CLASESS_YOLO[int(class_id)]
-                class_ids.append(label)
-
-                # extract boxes
-                x, y, w, h = row[0].item(), row[1].item(), row[2].item(), row[3].item()
-                left = int((x - 0.5 * w) * x_factor)
-                top = int((y - 0.5 * h) * y_factor)
-                width = int(w * x_factor)
-                height = int(h * y_factor)
-                box = np.array([left, top, width, height])
-                boxes.append(box)
-
-        r_class_ids, r_confs, r_boxes = list(), list(), list()
-
-        indexes = cv2.dnn.NMSBoxes(boxes, confs, 0.25, 0.45)
-        for i in indexes:
-            r_class_ids.append(class_ids[i])
-            r_confs.append(confs[i])
-            r_boxes.append(boxes[i])
-
-        for i in indexes:
-            box = boxes[i]
-            left = box[0]
-            top = box[1]
-            width = box[2]
-            height = box[3]
-
-            cv2.rectangle(frame, (left, top), (left + width, top + height), (0, 255, 0), 3)
-
+        def draw_bounding_box(img, class_id, confidence, x, y, x_plus_w, y_plus_h):
+            label = f'{CLASSES[class_id]} ({confidence:.2f})'
+            color = colors[class_id]
+            cv2.rectangle(img, (x, y), (x_plus_w, y_plus_h), color, 2)
+            cv2.putText(img, label, (x - 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
         if ret == True:
+
+            #Publish original video stream
+            self.publisher_original_.publish(self.br.cv2_to_imgmsg(frame))
+
+            input_image = frame
+            model: cv2.dnn.Net = self.net_
+            original_image: np.ndarray = input_image
+            [height, width, _] = original_image.shape
+            length = max((height, width))
+            image = np.zeros((length, length, 3), np.uint8)
+            image[0:height, 0:width] = original_image
+            scale = length / 640
+
+            blob = cv2.dnn.blobFromImage(image, scalefactor=1 / 255, size=(640, 640), swapRB=True)
+            model.setInput(blob)
+
+            #start inference
+            outputs = model.forward()
+
+            outputs = np.array([cv2.transpose(outputs[0])])
+            rows = outputs.shape[1]
+
+            boxes = []
+            scores = []
+            class_ids = []
+
+            for i in range(rows):
+                classes_scores = outputs[0][i][4:]
+                (minScore, maxScore, minClassLoc, (x, maxClassIndex)) = cv2.minMaxLoc(classes_scores)
+                if maxScore >= 0.66:
+                    box = [
+                        outputs[0][i][0] - (0.5 * outputs[0][i][2]), outputs[0][i][1] - (0.5 * outputs[0][i][3]),
+                        outputs[0][i][2], outputs[0][i][3]]
+                    boxes.append(box)
+                    scores.append(maxScore)
+                    class_ids.append(maxClassIndex)
+
+            result_boxes = cv2.dnn.NMSBoxes(boxes, scores, 0.25, 0.45, 0.5)
+
+            detections = []
+            for i in range(len(result_boxes)):
+                index = result_boxes[i]
+                box = boxes[index]
+                detection = {
+                    'class_id': class_ids[index],
+                    'class_name': CLASSES[class_ids[index]],
+                    'confidence': scores[index],
+                    'box': box,
+                    'scale': scale}
+                detections.append(detection)
+                draw_bounding_box(original_image, class_ids[index], scores[index], round(box[0] * scale),
+                                  round(box[1] * scale),
+                                  round((box[0] + box[2]) * scale), round((box[1] + box[3]) * scale))
+
             # Publish the image.
             # The 'cv2_to_imgmsg' method converts an OpenCV
             # image to a ROS 2 image message
-            self.publisher_.publish(self.br.cv2_to_imgmsg(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
+            self.publisher_.publish(self.br.cv2_to_imgmsg(original_image))
 
         # Display the message on the console
         self.get_logger().info('Publishing video frame')
-
 
 def main(args=None):
     # Initialize the rclpy library
@@ -150,7 +160,6 @@ def main(args=None):
 
     # Shutdown the ROS client library for Python
     rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()
