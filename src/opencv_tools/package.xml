@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>opencv_tools</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="fhcampus01@todo.todo">fhcampus01</maintainer>
-  <license>TODO: License declaration</license>
+  <name>ros2_object_detection</name>
+  <version>1.0.0</version>
+  <description>ROS2 Object Detection module using YOLO</description>
+  <maintainer email="daniel.kleissl@stud.fh-campuswien.ac.at">fhcampus01</maintainer>
+  <license>MIT</license>
 
   <depend>rclpy</depend>
   <depend>image_transport</depend>
@@ -13,7 +13,6 @@
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>python3-opencv</depend>
-  <depend>Pillow</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

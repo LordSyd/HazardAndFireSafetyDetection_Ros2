@@ -28,7 +28,7 @@ class ImageSubscriber(Node):
         # from the video_frames topic. The queue size is 10 messages.
         self.subscription = self.create_subscription(
             Image,
-            #'video_frames_annotated',
+            #'video_frames',
             'video_frames_annotated',
             self.listener_callback,
             10)

@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'opencv_tools_yolo_obj_detection'
+package_name = 'ros2_object_detection_yolo'
 
 setup(
     name=package_name,
@@ -16,12 +16,12 @@ setup(
     maintainer='Daniel Kleissl',
     maintainer_email='daniel.kleissl@stud.fh-campuswien.ac.at',
     description='Proof of Concept ROS2 object detection publisher and subscriber node',
-    license='TODO: License declaration',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'img_publisher = opencv_tools.basic_image_publisher:main',
-            'img_subscriber = opencv_tools.basic_image_subscriber:main'
+            'detection_publisher = ros2_object_detection.basic_image_publisher:main',
+            'detection_subscriber = ros2_object_detection.basic_image_subscriber:main'
         ],
     },
 )

@@ -1,8 +1,13 @@
 # Basic ROS 2 program to publish real-time streaming
-# video from your built-in webcam
-# Author:
+# video from your built-in webcam combined with YOLOv8 object detection
+# Author: Daniel Kleissl
+# Adopted from Code by:
 # - Addison Sears-Collins
 # - https://automaticaddison.com
+#
+# - Ultralytics YOLOv8 Docs
+# - https://docs.ultralytics.com/modes/predict/#streaming-source-for-loop
+
 import time
 
 import numpy as np
@@ -12,14 +17,10 @@ from rclpy.node import Node  # Handles the creation of nodes
 from sensor_msgs.msg import Image  # Image is the message type
 from cv_bridge import CvBridge  # Package to convert between ROS and OpenCV Images
 import cv2  # OpenCV library
-from PIL import Image as Img
-from PIL import ImageTk
-# CLASESS_YOLO = ["poison",
-#                         "oxygen", "flammable", "flammable-solid", "corrosive", "dangerous", "non-flammable-gas",
-#                         "organic-peroxide", "explosive", "radioactive", "inhalation-hazard",
-#                         "spontaneously-combustible", "infectious-substance"
-#                         ]
-CLASSES = ['Alarm_Activator', 'Fire_Blanket', 'Fire_Exit', 'Fire_Extinguisher', 'Fire_Suppression_Signage', 'corrosive', 'dangerous', 'explosive', 'flammable', 'flammable-solid', 'infectious-substance', 'inhalation-hazard', 'non-flammable-gas', 'organic-peroxide', 'oxygen', 'poison', 'radioactive', 'spontaneously-combustible']
+
+CLASSES = ['Alarm_Activator', 'Fire_Blanket', 'Fire_Exit', 'Fire_Extinguisher', 'Fire_Suppression_Signage', 'corrosive',
+           'dangerous', 'explosive', 'flammable', 'flammable-solid', 'infectious-substance', 'inhalation-hazard',
+           'non-flammable-gas', 'organic-peroxide', 'oxygen', 'poison', 'radioactive', 'spontaneously-combustible']
 
 colors = np.random.uniform(0, 255, size=(len(CLASSES), 3))
 
