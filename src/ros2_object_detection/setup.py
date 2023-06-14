@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'ros2_object_detection_yolo'
+package_name = 'ros2_object_detection'
 
 setup(
     name=package_name,

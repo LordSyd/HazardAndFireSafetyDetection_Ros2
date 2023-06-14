@@ -45,8 +45,7 @@ class ImagePublisher(Node):
         self.publisher_original_ = self.create_publisher(Image, 'video_frames', 10)
 
         # load trained model into OpenCV for inference
-        self.net_ = cv2.dnn.readNet(
-            '/home/fhcampus01/Documents/GitHub/HazardAndFireSafetyDetection_Ros2/src/opencv_tools/opencv_tools/models/yoloV8nCustom.onnx')
+        self.net_ = cv2.dnn.readNet('/home/fhcampus01/Documents/GitHub/HazardAndFireSafetyDetection_Ros2/src/ros2_object_detection/ros2_object_detection/models/yoloV8nCustom.onnx')
         #self.net_.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
 
         # We will try to publish a message every 0.05 seconds
